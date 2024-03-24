@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BottleBot.Commands.Notify\BottleBot.Commands.SlackNotify.csproj" />
+    <ProjectReference Include="..\BottleBot.Commands.SlackNotify\BottleBot.Commands.SlackNotify.csproj" />
     <ProjectReference Include="..\BottleBot\BottleBot.csproj" />
   </ItemGroup>
 

@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BottleBot.Irc", "BottleBot.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BottleBot", "BottleBot\BottleBot.csproj", "{3CCDD57D-A9BA-4F90-80FC-36C94F33D37B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BottleBot.Commands.SlackNotify", "BottleBot.Commands.Notify\BottleBot.Commands.SlackNotify.csproj", "{FDD5B38E-4738-48DB-9665-1EE616E543E5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BottleBot.Commands.SlackNotify", "BottleBot.Commands.SlackNotify\BottleBot.Commands.SlackNotify.csproj", "{FDD5B38E-4738-48DB-9665-1EE616E543E5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -2,6 +2,7 @@
 using BottleBot.Commands;
 using BottleBot.Commands.SlackNotify;
 using BottleBot.Irc;
+using BottleBot.MessageLogging;
 using Microsoft.Extensions.Logging;
 
 LogLevel logLevel = Enum.Parse<LogLevel>(Environment.GetEnvironmentVariable("LOG_LEVEL"), true);
@@ -22,9 +23,11 @@ string slackWebhookUrl = Environment.GetEnvironmentVariable("SLACK_NOTIFY_WEBHOO
 
 CommandService commandService = new();
 
+LocalMessageLogger messageLogger = new(new(logRootDirectory));
+
 ILogger<IRCbot> ircLogger = loggerFactory.CreateLogger<IRCbot>();
-IRCBotConfig config = new(server, port, user, nick, channel, logRootDirectory);
-IRCbot bot = new(commandService, config, ircLogger);
+IRCBotConfig config = new(server, port, user, nick, channel);
+IRCbot bot = new(commandService, messageLogger, config, ircLogger);
 
 commandService.Register(new HelpCommand(bot, commandService));
 

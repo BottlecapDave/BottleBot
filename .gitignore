@@ -1,5 +1,5 @@
 bin
 obj
-.vs/**
+**/.vs/**
 logs
 run.sh

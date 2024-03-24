@@ -1,4 +1,5 @@
-﻿using BottleBot.Messaging;
+﻿using BottleBot.MessageLogging;
+using BottleBot.Messaging;
 using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 
@@ -10,13 +11,16 @@ public class IRCbot : IMessagingService
 
     private readonly ICommandService _commandService;
 
+    private readonly IMessageLogger _messageLogger;
+
     private readonly ILogger<IRCbot> _logger;
 
     private StreamWriter? _writer;
 
-    public IRCbot(ICommandService commandService, IRCBotConfig config, ILogger<IRCbot> logger)
+    public IRCbot(ICommandService commandService, IMessageLogger messageLogger, IRCBotConfig config, ILogger<IRCbot> logger)
     {
         _commandService = commandService;
+        _messageLogger = messageLogger;
         _config = config;
         _logger = logger;
     }
@@ -161,14 +165,6 @@ public class IRCbot : IMessagingService
             return;
         }
 
-        string logFileName = Path.Join(_config.LogRootDir, channel, $"{DateTime.Now.ToString("yyyy-MM-dd")}.txt");
-        string logFileDirectory = Directory.GetParent(logFileName).FullName;
-        if (Directory.Exists(logFileDirectory) == false)
-        {
-            Directory.CreateDirectory(logFileDirectory);
-        }
-
-        string now = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
-        await File.AppendAllLinesAsync(logFileName, new string[] { $"[{now}] ({user}): {content}" });
+        await _messageLogger.SaveAsync(new(DateTime.Now, user, channel, content));
     }
 }
