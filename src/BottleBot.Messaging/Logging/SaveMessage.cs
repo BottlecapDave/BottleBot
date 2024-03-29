@@ -1,4 +1,4 @@
-﻿namespace BottleBot.MessageLogging;
+﻿namespace BottleBot.Messaging.Logging;
 
 /// <summary>
 /// The content of the message to save

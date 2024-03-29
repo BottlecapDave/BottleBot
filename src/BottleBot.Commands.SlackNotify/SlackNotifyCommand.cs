@@ -10,8 +10,6 @@ public class SlackNotifyCommand : ICommand
     private readonly IMessagingService _messagingService;
 
     private readonly SlackNotifyCommandConfig _config;
-
-
     public SlackNotifyCommand(IMessagingService messagingService, SlackNotifyCommandConfig config)
     {
         _messagingService = messagingService;
@@ -29,7 +27,7 @@ public class SlackNotifyCommand : ICommand
     public string Description { get { return "Notifies BottlecapDave that his attention is requested."; } }
 
     /// <summary>
-    /// The description of what the command does
+    /// The description of how the command can be used
     /// </summary>
     public string Help { get { return $"To notify BottlecapDave, type !{Key} followed by an optional message (e.g. !{Key} come quick)"; } }
 
@@ -44,7 +42,6 @@ public class SlackNotifyCommand : ICommand
             var msg = new { text = $"From {context.User}@{context.Channel}: {(string.IsNullOrEmpty(context.Content) == false ? context.Content : DefaultMessage)}" };
             await client.PostAsJsonAsync(_config.SlackWebhookUrl, msg);
             await _messagingService.SendAsync(new(context.Channel, "Notification has been sent"));
-
         }
     }
 }

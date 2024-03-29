@@ -1,4 +1,4 @@
-﻿namespace BottleBot;
+﻿namespace BottleBot.Commands;
 
 /// <summary>
 /// The context of the command that has been executed

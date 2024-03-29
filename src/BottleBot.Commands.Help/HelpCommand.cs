@@ -26,7 +26,7 @@ public class HelpCommand : ICommand
     public string Description { get { return "returns all available commands."; } }
 
     /// <summary>
-    /// The description of what the command does
+    /// The description of how the command can be used
     /// </summary>
     public string Help { get { return $"To get help on a specific command, type !{Key} followed by the command (e.g. !{Key} {_commandService.Commands.Last().Key})"; } }
 

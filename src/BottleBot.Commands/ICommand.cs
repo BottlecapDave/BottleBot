@@ -1,4 +1,4 @@
-﻿namespace BottleBot;
+﻿namespace BottleBot.Commands;
 
 public interface ICommand
 {

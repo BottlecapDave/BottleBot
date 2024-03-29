@@ -11,11 +11,15 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BottleBot.Commands.Help\BottleBot.Commands.Help.csproj" />
     <ProjectReference Include="..\BottleBot.Commands.SlackNotify\BottleBot.Commands.SlackNotify.csproj" />
-    <ProjectReference Include="..\BottleBot\BottleBot.csproj" />
+    <ProjectReference Include="..\BottleBot.Commands.Summarise\BottleBot.Commands.Summarise.csproj" />
+    <ProjectReference Include="..\BottleBot.Messaging.Processors\BottleBot.Messaging.Processors.csproj" />
   </ItemGroup>
 
 </Project>

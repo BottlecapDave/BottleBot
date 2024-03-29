@@ -1,4 +1,4 @@
-﻿namespace BottleBot.MessageLogging;
+﻿namespace BottleBot.Messaging.Logging;
 
 /// <summary>
 /// The config for the LocalMessageLogger
