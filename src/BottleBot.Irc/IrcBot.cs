@@ -89,13 +89,12 @@ public class IRCbot : IMessagingService
             bool isConnected = true;
             using (CancellationTokenSource cts = new CancellationTokenSource())
             {
-
                 void checkPing()
                 {
                     while (LastPing == null || LastPing >= DateTime.UtcNow.AddMinutes(-5))
                     {
                         
-                        _logger.LogDebug($"Ping received in timely manner. Checking soon.");
+                        _logger.LogDebug($"Ping received within valid time frame. Will check against in 1 minute.");
                         Thread.Sleep(60000);
                     }
 
