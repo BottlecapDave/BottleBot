@@ -15,6 +15,38 @@ public class IRCbot : IMessagingService
 
     private StreamWriter? _writer;
 
+    private SemaphoreSlim _lastPingLock = new(1, 1);
+
+    private DateTimeOffset? _lastPing;
+
+    private DateTimeOffset? LastPing
+    {
+        get
+        {
+            _lastPingLock.Wait();
+            try
+            {
+                return _lastPing;
+            }
+            finally
+            {
+                _lastPingLock.Release();
+            }
+        }
+        set
+        {
+            _lastPingLock.Wait();
+            try
+            {
+                _lastPing = value;
+            }
+            finally
+            {
+                _lastPingLock.Release();
+            }
+        }
+    }
+
     public IRCbot(IMessageProcessorService messageProcessorService, IRCBotConfig config, ILogger<IRCbot> logger)
     {
         _messageProcessorService = messageProcessorService;
@@ -45,99 +77,136 @@ public class IRCbot : IMessagingService
         {
             await _writer.WriteLineAsync(message);
             await _writer.FlushAsync();
+            _logger.LogDebug($"RESPONSE --> {message}");
         }
     }
 
     public async Task StartAsync()
     {
-        var retry = true;
-        var retryCount = 0;
+        bool retry = true;
         do
         {
-            try
+            bool isConnected = true;
+            using (CancellationTokenSource cts = new CancellationTokenSource())
             {
-                using (var irc = new TcpClient(_config.Server, _config.Port))
-                using (var stream = irc.GetStream())
-                using (var reader = new StreamReader(stream))
+
+                void checkPing()
                 {
-                    if (_writer != null)
+                    while (LastPing == null || LastPing >= DateTime.UtcNow.AddMinutes(-5))
                     {
-                        await _writer.DisposeAsync();
+                        
+                        _logger.LogDebug($"Ping received in timely manner. Checking soon.");
+                        Thread.Sleep(60000);
                     }
 
-                    _writer = new StreamWriter(stream);
+                    _logger.LogDebug($"Application hasn't received a ping since {LastPing}, so restarting");
+                    LastPing = null;
+                    isConnected = false;
+                    cts.Cancel();
+                }
 
-                    await SendAsync($"NICK {_config.Nick}");
-                    await SendAsync(_config.User);
+                Thread checkPingThread = new Thread(checkPing);
+                checkPingThread.Start();
 
-                    while (true)
+                try
+                {
+                    using (var irc = new TcpClient(_config.Server, _config.Port))
                     {
-                        string? inputLine;
-                        while ((inputLine = reader.ReadLine()) != null)
+                        using (var stream = irc.GetStream())
                         {
-                            try
+                            using (var reader = new StreamReader(stream))
                             {
-                                _logger.LogDebug($"MSG --> {inputLine}");
-
-                                // split the lines sent from the server by spaces (seems to be the easiest way to parse them)
-                                string[] splitInput = inputLine.Split(new Char[] { ' ' });
-
-                                if (splitInput[0] == "PING")
+                                if (_writer != null)
                                 {
-                                    string PongReply = splitInput[1];
-                                    await SendAsync($"PONG {PongReply}");
-                                    continue;
+                                    await _writer.DisposeAsync();
                                 }
 
-                                int commandStartIndex = inputLine.IndexOf(':');
-                                if (commandStartIndex < 0)
+                                _writer = new StreamWriter(stream);
+
+                                await SendAsync($"NICK {_config.Nick}");
+                                await SendAsync(_config.User);
+
+                                while (isConnected && irc.Connected)
                                 {
-                                    continue;
+                                    string? inputLine = await reader.ReadLineAsync(cts.Token);
+                                    isConnected = await ProcessMessageAsync(inputLine);
                                 }
-
-                                // Go beyond the :
-                                commandStartIndex += 1;
-
-                                int commandEndIndex = inputLine.Substring(commandStartIndex + 1).IndexOf(" :");
-                                if (commandEndIndex < 0)
-                                {
-                                    continue;
-                                }
-
-                                commandEndIndex += 1;
-
-                                string command = inputLine.Substring(commandStartIndex, commandEndIndex - commandStartIndex + 1);
-                                string content = inputLine.Substring(commandStartIndex + commandEndIndex + 2);
-
-                                splitInput = command.Split(new Char[] { ' ' });
-
-                                switch (splitInput[1])
-                                {
-                                    case "001":
-                                        await JoinChannelAsync();
-                                        break;
-                                    case "PRIVMSG":
-                                        await ProcessPrivateMessageAsync(splitInput, content);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            } catch (Exception ex)
-                            {
-                                _logger.LogError("Recoverable error - {Error}: {StackTrace}", ex.Message, ex.StackTrace);
                             }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    // shows the exception, sleeps for a little while and then tries to establish a new connection to the IRC server
+                    _logger.LogError("Error requires reconnection - {Error}: {StackTrace}", ex.Message, ex.StackTrace);
+                    Thread.Sleep(5000);
+                }
             }
-            catch (Exception ex)
-            {
-                // shows the exception, sleeps for a little while and then tries to establish a new connection to the IRC server
-                _logger.LogError("Error requires reconnection - {Error}: {StackTrace}", ex.Message, ex.StackTrace);
-                Thread.Sleep(5000);
-                retryCount++;
-            }
-        } while (retry);
+        }
+        while (retry);
+    }
+
+    private async Task<bool> ProcessMessageAsync(string? inputLine)
+    {
+        if (inputLine == null)
+        {
+            return true;
+        }
+
+        _logger.LogDebug($"MSG --> {inputLine}");
+
+        // split the lines sent from the server by spaces (seems to be the easiest way to parse them)
+        string[] splitInput = inputLine.Split(new Char[] { ' ' });
+
+        if (splitInput[0] == "PING")
+        {
+            LastPing = DateTimeOffset.Now;
+            string PongReply = splitInput[1];
+            await SendAsync($"PONG {PongReply}");
+            return true;
+        }
+
+        if (inputLine.Contains(":Closing Link:"))
+        {
+            _logger.LogInformation("Disconnected from host. Trying to reconnect");
+            return false;
+        }
+
+        int commandStartIndex = inputLine.IndexOf(':');
+        if (commandStartIndex < 0)
+        {
+            return true;
+        }
+
+        // Go beyond the :
+        commandStartIndex += 1;
+
+        int commandEndIndex = inputLine.Substring(commandStartIndex + 1).IndexOf(" :");
+        if (commandEndIndex < 0)
+        {
+            return true;
+        }
+
+        commandEndIndex += 1;
+
+        string command = inputLine.Substring(commandStartIndex, commandEndIndex - commandStartIndex + 1);
+        string content = inputLine.Substring(commandStartIndex + commandEndIndex + 2);
+
+        splitInput = command.Split(new Char[] { ' ' });
+
+        switch (splitInput[1])
+        {
+            case "001":
+                await JoinChannelAsync();
+                break;
+            case "PRIVMSG":
+                await ProcessPrivateMessageAsync(splitInput, content);
+                break;
+            default:
+                break;
+        }
+
+        return true;
     }
 
     private async Task JoinChannelAsync()
